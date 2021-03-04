@@ -1,0 +1,30 @@
+{
+  "title": "Flipr",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Flipr",
+        "description": "Connect using your Flipr account.",
+        "data": {
+          "email": "[%key:common::config_flow::data::email%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        }
+      },
+      "flipr_id": {
+        "title": "Enter or choose your Flipr",
+        "description": "Flipr ID not determined. Enter or choose your Flipr ID.",
+        "data": {
+          "flipr_id": "Flipr ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    }
+  }
+}
