@@ -8,7 +8,13 @@ from homeassistant.const import (
 from homeassistant.helpers.entity import Entity
 
 from . import FliprEntity
-from .const import ATTRIBUTION, CONF_FLIPR_ID, DOMAIN, MANUFACTURER, NAME
+
+from .const import (
+    ATTRIBUTION,
+    DOMAIN,
+    MANUFACTURER,
+    NAME
+)
 
 SENSORS = {
     "chlorine": {

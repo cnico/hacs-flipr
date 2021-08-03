@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=60)
 
 
-PLATFORMS = ["sensor", "binary_sensor"]
+PLATFORMS = ["sensor", "binary_sensor", "switch"]
 
 
 async def async_setup(hass: HomeAssistant, config: Dict) -> bool:
@@ -77,9 +77,8 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialize."""
         username = entry.data[CONF_USERNAME]
         crypted_password = entry.data[CONF_PASSWORD]
-        self.flipr_id = entry.data[CONF_FLIPR_ID]
 
-        _LOGGER.debug("Config entry values : %s, %s", username, self.flipr_id)
+        _LOGGER.debug("Config entry values : %s, %s", username)
 
         # Decrypt stored password in config.
         password = decrypt_data(crypted_password, self.flipr_id)
@@ -92,8 +91,14 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name=f"Flipr data measure for {self.flipr_id}",
+            name=f"Flipr device update",
             update_interval=SCAN_INTERVAL,
+        )
+
+    async def _async_list_devices(self):
+        """Fetch data from API endpoint."""
+        return await self.hass.async_add_executor_job(
+            self.client.search_all_ids
         )
 
     async def _async_update_data(self):
@@ -101,6 +106,7 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
         return await self.hass.async_add_executor_job(
             self.client.get_pool_measure_latest, self.flipr_id
         )
+
 
 
 class FliprEntity(CoordinatorEntity):
