@@ -1,84 +1,58 @@
 """Switch platform for the Flipr's hub"""
 import logging
 
-from homeassistant.components.switch import SwitchEntity
+# Conditional import for switch device
+try:
+    from homeassistant.components.switch import SwitchEntity
+except ImportError:
+    from homeassistant.components.switch import SwitchDevice as SwitchEntity
 
-from homeassistant.const import (
-    STATE_OFF,
-    STATE_ON
-)
+from homeassistant.const import STATE_OFF, STATE_ON, ATTR_ATTRIBUTION
 
 from . import FliprEntity
-from .const import ATTRIBUTION, CONF_FLIPR_ID, DOMAIN
+from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, NAME, FliprType
 
+import logging
 _LOGGER = logging.getLogger(__name__)
+
+SWITCHS = {"hub_status": {"unit": None, "icon": None, "name": "Hub Status"}}
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up hub in flipr account"""
-    async def get_hubs():
-            """Retrieve flipr hub ids."""
-            hubs = []
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    entities = []
-    om_switches = []
+    switchs_list = []
 
-    switch_type = get_key_for_word(OPENMOTICS_OUTPUT_TYPE_TO_NAME, 'outlet')
-    for module in gateway.get_om_output_modules():
-        if module['type'] == switch_type:
-            om_switches.append(module)
+    flipr_hubs = [device.id for device in coordinator.data
+                  if device.type == FliprType.hub]
 
-    if not om_switches:
-        _LOGGER.debug("No switches/outlets found.")
-        return False
+    for flipr_hub in flipr_hubs:
+        for switch in SWITCHS:
+            switchs_list.append(FliprSwitch(coordinator, flipr_hub, switch))
 
-    for entity in om_switches:
-        _LOGGER.debug("Adding switch %s", entity)
-        entities.append(OpenMoticsSwitch(hass, gateway, entity))
-
-    if not entities:
-        _LOGGER.warning("No OpenMotics Switch added")
-        return False
-
-    async_add_entities(entities)
+    async_add_entities(switchs_list, True)
 
 
 class FliprSwitch(FliprEntity, SwitchEntity):
     """Representation of a Flipr hub switch."""
 
-    def __init__(self, hass, gateway, switch):
-        """Initialize the switch."""
-        self._hass = hass
-        self.gateway = gateway
-        self._id = switch['id']
-        self._name = switch['name']
-        self._floor = switch['floor']
-        self._room = switch['room']
-        self._timer = None
-        self._dimmer = None
-        self._state = None
-
-        self._refresh()
+    @property
+    def device_info(self):
+        """Define device information global to entities."""
+        return {
+            "identifiers": {
+                # Serial numbers are unique identifiers within a specific domain
+                (DOMAIN, self.flipr_id)
+            },
+            "name": NAME,
+            "manufacturer": MANUFACTURER,
+        }
 
     @property
     def name(self):
-        """Return the name of the switch."""
-        return self._name
-
-    @property
-    def floor(self):
-        """Return the floor of the switch."""
-        return self._floor
-
-    @property
-    def room(self):
-        """Return the room of the switch."""
-        return self._room
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return self._id
+        """Return the name of the particular component."""
+        return f"Hub {self.flipr_id} "
 
     @property
     def is_on(self):
@@ -86,40 +60,34 @@ class FliprSwitch(FliprEntity, SwitchEntity):
         return self._state == STATE_ON
 
     @property
-    def device_info(self):
-        """Return information about the device."""
-        info = {
-            "identifiers": {(DOMAIN, self.unique_id)},
-            "name": self.name,
-            "id": self.unique_id,
-            "floor": self.floor,
-            "room": self.room,
-            "manufacturer": "Flipr",
-        }
-        return info
+    def icon(self):
+        """Return the icon."""
+        return SWITCHS[self.info_type]["icon"]
 
     @property
     def available(self):
         """If hub is available."""
         return self._state is not None
 
-    async def async_turn_on(self, **kwargs):
-        """Turn device on."""
-        sop = self.gateway.api.set_output(self._id, True, self._dimmer, self._timer)
-        if sop['success'] is True:
-            self._state = STATE_ON
-        else:
-            _LOGGER.error("Error setting output id %s to True", self._id)
-            self._state = STATE_OFF
+    async def async_turn_on(self, **kwargs) -> None:
+        """Turn hub on."""
+        result = await self.coordinator.async_set_hub_state(self.flipr_id, True)
 
-    async def async_turn_off(self, **kwargs):
-        """Turn devicee off."""
-        sop = self.gateway.api.set_output(self._id, False, None, None)
-        if sop['success'] is True:
-            self._state = STATE_OFF
+        if result is not True:
+            _LOGGER.error("Error turning on the hub id %s", self.flipr_id)
         else:
-            _LOGGER.error("Error setting output id %s to False", self._id)
             self._state = STATE_ON
+            self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Turn hub off."""
+        result = await self.coordinator.async_set_hub_state(self.flipr_id, False)
+
+        if result is not False:
+            _LOGGER.error("Error turning off the hub id %s", self.flipr_id)
+        else:
+            self._state = STATE_OFF
+            self.async_write_ha_state()
 
     async def async_update(self):
         """Retrieve latest state."""
@@ -127,26 +95,12 @@ class FliprSwitch(FliprEntity, SwitchEntity):
 
     def _refresh(self):
         """Update the state of the switch."""
-        if not self.gateway.update() and self._state is not None:
-            return
+        state = self.coordinator.device(
+            self.flipr_id).data["state"]
 
-        output_status = self.gateway.get_output_status(self._id)
-
-        if not output_status:
-            _LOGGER.error('Switch._refresh: No responce form the controller')
-            return
-
-        # var_dump(output_status)
-        if output_status['dimmer'] is not None:
-            self._dimmer = output_status['dimmer']
-
-        if output_status['ctimer'] is not None:
-            self._ctimer = output_status['ctimer']
-
-        if output_status['status'] is not None:
-            if output_status['status'] == 1:
-                self._state = STATE_ON
-            else:
-                self._state = STATE_OFF
+        if state == True:
+            self._state = STATE_ON
+        elif state == False:
+            self._state = STATE_OFF
         else:
             self._state = None

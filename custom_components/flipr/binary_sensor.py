@@ -5,7 +5,7 @@ from homeassistant.components.binary_sensor import (
 )
 
 from . import FliprEntity
-from .const import CONF_FLIPR_ID, DOMAIN
+from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, NAME, FliprResult, FliprType
 
 BINARY_SENSORS = {
     "ph_status": {
@@ -28,12 +28,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     binary_sensors_list = []
-    for binary_sensor in BINARY_SENSORS:
-        binary_sensors_list.append(
-            FliprBinarySensor(
-                coordinator, config_entry.data[CONF_FLIPR_ID], binary_sensor
+
+    flipr_ids = [device.id for device in coordinator.data
+                 if device.type == FliprType.flipr]
+
+    for flipr_id in flipr_ids:
+        for binary_sensor in BINARY_SENSORS:
+            binary_sensors_list.append(
+                FliprBinarySensor(coordinator, flipr_id, binary_sensor)
             )
-        )
 
     async_add_entities(binary_sensors_list, True)
 
@@ -45,8 +48,10 @@ class FliprBinarySensor(FliprEntity, BinarySensorEntity):
     def is_on(self):
         """Return true if the binary sensor is on in case of a Problem is detected."""
         return (
-            self.coordinator.data[self.info_type] == "TooLow"
-            or self.coordinator.data[self.info_type] == "TooHigh"
+            self.coordinator.device(
+                self.flipr_id).data[self.info_type] == "TooLow"
+            or self.coordinator.device(
+                self.flipr_id).data[self.info_type] == "TooHigh"
         )
 
     @property
