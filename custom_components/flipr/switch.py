@@ -15,7 +15,7 @@ from .const import DOMAIN, MANUFACTURER, NAME, FliprType
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-SWITCHS = {"hub_status": {"unit": None, "icon": None, "name": "Hub Status"}}
+SWITCHS = {"hub_status": {"icon": "mdi:air-humidifier", "name": "Hub Status"}}
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -42,7 +42,6 @@ class FliprSwitch(FliprEntity, SwitchEntity):
         """Define device information global to entities."""
         return {
             "identifiers": {
-                # Serial numbers are unique identifiers within a specific domain
                 (DOMAIN, self.flipr_id)
             },
             "name": NAME,

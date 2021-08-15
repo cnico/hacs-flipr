@@ -65,7 +65,6 @@ class FliprSensor(FliprEntity, Entity):
         """Define device information global to entities."""
         return {
             "identifiers": {
-                # Serial numbers are unique identifiers within a specific domain
                 (DOMAIN, self.flipr_id)
             },
             "name": NAME,

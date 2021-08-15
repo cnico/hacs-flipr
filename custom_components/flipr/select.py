@@ -34,7 +34,8 @@ from .const import (
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-SELECTS = {"hub_mode": {"icon": None, "name": "Hub mode", "modes": HUB_MODES}}
+SELECTS = {"hub_mode": {"icon": "mdi-air-humidifier",
+                        "name": "Hub mode", "modes": HUB_MODES}}
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
