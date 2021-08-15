@@ -23,6 +23,10 @@ from .const import (
     DOMAIN,
     MANUFACTURER,
     NAME,
+    MODE_HUB_AUTO,
+    MODE_HUB_MANUAL,
+    MODE_HUB_PLANNING,
+    HUB_MODES,
     FliprType,
     FliprResult
 )
@@ -30,8 +34,7 @@ from .const import (
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-SELECTS = {"hub_mode": {"icon": None, "name": "Hub mode",
-                        "modes": {"auto", "manual", "planning"}}}
+SELECTS = {"hub_mode": {"icon": None, "name": "Hub mode", "modes": HUB_MODES}}
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -92,7 +95,7 @@ class FliprModeSelect(FliprEntity, SelectEntity):
                               self.flipr_id, option)
             else:
                 self._attr_current_option = result
-                self.async_write_ha_state()
+                self.async_schedule_update_ha_state()
         else:
             raise ValueError(
                 f"Can't set the hub mode to {option}. Allowed modes are: {self.options}"

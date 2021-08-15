@@ -7,10 +7,10 @@ try:
 except ImportError:
     from homeassistant.components.switch import SwitchDevice as SwitchEntity
 
-from homeassistant.const import STATE_OFF, STATE_ON, ATTR_ATTRIBUTION
+from homeassistant.const import STATE_OFF, STATE_ON
 
 from . import FliprEntity
-from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, NAME, FliprType
+from .const import DOMAIN, MANUFACTURER, NAME, FliprType
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
             _LOGGER.error("Error turning on the hub id %s", self.flipr_id)
         else:
             self._state = STATE_ON
-            self.async_write_ha_state()
+            self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn hub off."""
@@ -87,7 +87,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
             _LOGGER.error("Error turning off the hub id %s", self.flipr_id)
         else:
             self._state = STATE_OFF
-            self.async_write_ha_state()
+            self.async_schedule_update_ha_state()
 
     async def async_update(self):
         """Retrieve latest state."""

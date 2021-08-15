@@ -4,17 +4,14 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 import logging
+from time import time
 from typing import Dict
 
 from async_timeout import timeout
-
 from flipr_api import FliprAPIRestClient
-
 from homeassistant.config_entries import ConfigEntry
 
 from homeassistant.core import HomeAssistant
-
-from homeassistant.exceptions import ConfigEntryNotReady
 
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -27,7 +24,6 @@ from .const import (
     CONF_USERNAME,
     DOMAIN,
     API_TIMEOUT,
-    MODE_HUB_MANUAL,
     FliprResult,
     FliprType
 )
@@ -35,8 +31,9 @@ from .crypt_util import decrypt_data
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=15)
-
+SCAN_INTERVAL_FLIPR = 3600
+SCAN_INTERVAL_HUB = 300
+SCAN_INTERVAL_GLOBAL = timedelta(minutes=1)
 
 PLATFORMS = ["sensor", "binary_sensor", "switch", "select"]
 
@@ -45,7 +42,6 @@ async def async_setup(hass: HomeAssistant, config: Dict) -> bool:
     """Set up the Flipr component."""
     # Make sure coordinator is initialized.
     hass.data.setdefault(DOMAIN, {})
-
     return True
 
 
@@ -56,10 +52,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = FliprDataUpdateCoordinator(hass, entry)
 
     await coordinator.async_config_entry_first_refresh()
-
-    # await coordinator.async_refresh()
-    # if not coordinator.last_update_success:
-    #    raise ConfigEntryNotReady
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
@@ -110,12 +102,11 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=f"Flipr device update",
-            update_interval=SCAN_INTERVAL,
+            update_interval=SCAN_INTERVAL_GLOBAL,
         )
 
     async def _async_update_data(self):
         """Fetch data from API endpoint."""
-
         with timeout(API_TIMEOUT):
             try:
                 _LOGGER.debug("Fetching Flipr devices")
@@ -130,37 +121,55 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
             except Exception as err:
                 raise UpdateFailed(err) from err
 
-    async def _fetch_flipr_data(self, id):
+    async def _fetch_flipr_data(self, id) -> FliprResult:
         """Fetch latest Flipr data."""
-        _LOGGER.debug("Fetching flipr data for %s", id)
-        flipr_data = await self.hass.async_add_executor_job(self.client.get_pool_measure_latest, id)
-        return FliprResult(id=id, type=FliprType.flipr, data=flipr_data)
+        if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_FLIPR > time()):
+            # Data fresh enough, skip reading
+            return self.device(id)
+        else:
+            # Refresh Data
+            flipr_data = await self.hass.async_add_executor_job(self.client.get_pool_measure_latest, id)
+            return FliprResult(id=id, type=FliprType.flipr, last_read=time(), data=flipr_data)
 
-    async def _fetch_hub_data(self, id: str):
+    async def _fetch_hub_data(self, id: str) -> FliprResult:
         """Fetch latest Flipr hub data."""
-        _LOGGER.debug("Fetching hub data for %s", id)
-        flipr_data = await self.hass.async_add_executor_job(self.client.get_hub_state, id)
-        return FliprResult(id=id, type=FliprType.hub, data=flipr_data)
+        _LOGGER.debug(self.device(id))
+        if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_HUB > time()):
+            # Data fresh enough, skip reading
+            _LOGGER.debug("skip fetching hub data for %s", id)
+            return self.device(id)
+        else:
+            # Refresh Data
+            _LOGGER.debug("Fetching hub data for %s", id)
+            flipr_data = await self.hass.async_add_executor_job(self.client.get_hub_state, id)
+            return FliprResult(id=id, type=FliprType.hub, last_read=time(), data=flipr_data)
 
-    async def async_set_hub_state(self, id: str, state: bool):
+    async def async_set_hub_state(self, id: str, state: bool) -> bool:
         """Set Flipr hub state."""
         _LOGGER.debug("Set hub %s state to %s", id, state)
         result = await self.hass.async_add_executor_job(self.client.set_hub_state, id, state)
         if result is not None:
+            # refresh data state
             self.device(id).data["state"] = result["state"]
             self.device(id).data["mode"] = result["mode"]
+            self.device(id).data["last_read"] = time()
         return result["state"]
 
-    async def async_set_hub_mode(self, id: str, mode: str):
+    async def async_set_hub_mode(self, id: str, mode: str) -> str:
         """Set Flipr hub mode."""
         _LOGGER.debug("Set hub %s mode to %s", id, mode)
         result = await self.hass.async_add_executor_job(self.client.set_hub_mode, id, mode)
         if result is not None:
+            # refresh data state
             self.device(id).data["state"] = result["state"]
             self.device(id).data["mode"] = result["mode"]
+            self.device(id).data["last_read"] = time()
         return result["mode"]
 
-    def device(self, id: str):
+    def device(self, id: str) -> FliprResult:
+        if self.data is None:
+            return None
+
         for device in self.data:
             if device.id == id:
                 return device

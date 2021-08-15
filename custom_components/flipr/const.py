@@ -1,4 +1,5 @@
 """Constants for the Flipr integration."""
+from datetime import time
 import enum
 from dataclasses import dataclass
 
@@ -31,3 +32,4 @@ class FliprResult:
     id: str
     type: FliprType
     data: dict
+    last_read: time
