@@ -133,10 +133,8 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _fetch_hub_data(self, id: str) -> FliprResult:
         """Fetch latest Flipr hub data."""
-        _LOGGER.debug(self.device(id))
         if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_HUB > time()):
             # Data fresh enough, skip reading
-            _LOGGER.debug("skip fetching hub data for %s", id)
             return self.device(id)
         else:
             # Refresh Data

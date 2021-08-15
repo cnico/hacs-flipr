@@ -23,18 +23,14 @@ from .const import (
     DOMAIN,
     MANUFACTURER,
     NAME,
-    MODE_HUB_AUTO,
-    MODE_HUB_MANUAL,
-    MODE_HUB_PLANNING,
     HUB_MODES,
-    FliprType,
-    FliprResult
+    FliprType
 )
 
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-SELECTS = {"hub_mode": {"icon": "mdi-air-humidifier",
+SELECTS = {"hub_mode": {"icon": "mdi:air-humidifier",
                         "name": "Hub mode", "modes": HUB_MODES}}
 
 
@@ -76,6 +72,11 @@ class FliprModeSelect(FliprEntity, SelectEntity):
     def name(self) -> str:
         """Return the name of the particular component."""
         return f"Flipr {self.flipr_id} {SELECTS[self.info_type]['name']}"
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        return SELECTS[self.info_type]["icon"]
 
     @property
     def current_option(self) -> str:
