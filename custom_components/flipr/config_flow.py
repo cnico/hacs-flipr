@@ -39,7 +39,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "invalid_auth"
             return self._show_setup_form(errors)
 
-        await self.async_set_unique_id(self._username)
+        await self.async_set_unique_id("FLIPR_user_"+self._username)
         self._abort_if_unique_id_configured()
 
         # Encrypt password before storing it in the config json file.
