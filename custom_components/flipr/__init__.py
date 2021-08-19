@@ -126,9 +126,9 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _fetch_flipr_data(self, id) -> FliprResult:
         """Fetch latest Flipr data."""
-        if (self.device(id) is not None) and (self.data[id].last_read + SCAN_INTERVAL_FLIPR > time()):
+        if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_FLIPR > time()):
             # Data fresh enough, skip reading
-            return self.data[id]
+            return self.device(id)
         else:
             # Refresh Data
             flipr_data = await self.hass.async_add_executor_job(self.client.get_pool_measure_latest, id)
@@ -136,9 +136,9 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _fetch_hub_data(self, id: str) -> FliprResult:
         """Fetch latest Flipr hub data."""
-        if (self.device(id) is not None) and (self.data[id].last_read + SCAN_INTERVAL_HUB > time()):
+        if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_HUB > time()):
             # Data fresh enough, skip reading
-            return self.data[id]
+            return self.device(id)
         else:
             # Refresh Data
             _LOGGER.debug("Fetching hub data for %s", id)
@@ -210,8 +210,9 @@ class FliprEntity(CoordinatorEntity):
             },
             "name": f"{NAME} - {self.flipr_id}",
             "manufacturer": MANUFACTURER,
-            "model": self.device().type.value
+            "model": self.device.type.value
         }
 
+    @property
     def device(self):
         return self.coordinator.data[self.flipr_id]

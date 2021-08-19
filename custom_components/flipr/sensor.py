@@ -72,7 +72,7 @@ class FliprSensor(FliprEntity, Entity):
     @property
     def state(self):
         """State of the sensor."""
-        return self.device().data[self.info_type]
+        return self.device.data[self.info_type]
 
     @property
     def device_class(self):

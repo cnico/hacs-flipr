@@ -67,7 +67,7 @@ class FliprModeSelect(FliprEntity, SelectEntity):
     @property
     def current_option(self) -> str:
         """Return the curent mode."""
-        return str(self.device().data["mode"])
+        return str(self.device.data["mode"])
 
     @property
     def options(self) -> list:

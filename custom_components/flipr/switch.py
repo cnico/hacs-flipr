@@ -45,7 +45,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
     @property
     def is_on(self):
         """Return true if device is on."""
-        return self.device().data["state"]
+        return self.device.data["state"]
 
     @property
     def icon(self):
@@ -55,7 +55,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
     @property
     def available(self):
         """If hub is available."""
-        return (self.device().data["state"] is not None)
+        return (self.device.data["state"] is not None)
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn hub on."""
