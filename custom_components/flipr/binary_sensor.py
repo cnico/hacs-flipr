@@ -5,7 +5,7 @@ from homeassistant.components.binary_sensor import (
 )
 
 from . import FliprEntity
-from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, NAME, FliprResult, FliprType
+from .const import DOMAIN, FliprResult, FliprType
 
 BINARY_SENSORS = {
     "ph_status": {
@@ -29,8 +29,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     binary_sensors_list = []
 
-    flipr_ids = [device.id for device in coordinator.data
-                 if device.type == FliprType.flipr]
+    flipr_ids = coordinator.list_ids(FliprType.flipr)
 
     for flipr_id in flipr_ids:
         for binary_sensor in BINARY_SENSORS:
@@ -48,10 +47,8 @@ class FliprBinarySensor(FliprEntity, BinarySensorEntity):
     def is_on(self):
         """Return true if the binary sensor is on in case of a Problem is detected."""
         return (
-            self.coordinator.device(
-                self.flipr_id).data[self.info_type] == "TooLow"
-            or self.coordinator.device(
-                self.flipr_id).data[self.info_type] == "TooHigh"
+            self.device().data[self.info_type] == "TooLow"
+            or self.device().data[self.info_type] == "TooHigh"
         )
 
     @property

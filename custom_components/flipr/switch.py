@@ -10,7 +10,7 @@ except ImportError:
 from homeassistant.const import STATE_OFF, STATE_ON
 
 from . import FliprEntity
-from .const import DOMAIN, MANUFACTURER, NAME, FliprType
+from .const import DOMAIN, FliprType
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -24,29 +24,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     switchs_list = []
 
-    flipr_hubs = [device.id for device in coordinator.data
-                  if device.type == FliprType.hub]
+    flipr_hubs = coordinator.list_ids(FliprType.hub)
 
     for flipr_hub in flipr_hubs:
         for switch in SWITCHS:
-            switchs_list.append(FliprSwitch(coordinator, flipr_hub, switch))
+            switchs_list.append(FliprSwitch(
+                coordinator, flipr_hub, switch))
 
     async_add_entities(switchs_list, True)
 
 
 class FliprSwitch(FliprEntity, SwitchEntity):
     """Representation of a Flipr hub switch."""
-
-    @property
-    def device_info(self):
-        """Define device information global to entities."""
-        return {
-            "identifiers": {
-                (DOMAIN, self.flipr_id)
-            },
-            "name": NAME,
-            "manufacturer": MANUFACTURER,
-        }
 
     @property
     def name(self):
@@ -56,7 +45,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
     @property
     def is_on(self):
         """Return true if device is on."""
-        return self._state == STATE_ON
+        return self.device().data["state"]
 
     @property
     def icon(self):
@@ -66,7 +55,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
     @property
     def available(self):
         """If hub is available."""
-        return self._state is not None
+        return (self.device().data["state"] is not None)
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn hub on."""
@@ -75,8 +64,7 @@ class FliprSwitch(FliprEntity, SwitchEntity):
         if result is not True:
             _LOGGER.error("Error turning on the hub id %s", self.flipr_id)
         else:
-            self._state = STATE_ON
-            self.async_schedule_update_ha_state()
+            await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn hub off."""
@@ -85,21 +73,4 @@ class FliprSwitch(FliprEntity, SwitchEntity):
         if result is not False:
             _LOGGER.error("Error turning off the hub id %s", self.flipr_id)
         else:
-            self._state = STATE_OFF
-            self.async_schedule_update_ha_state()
-
-    async def async_update(self):
-        """Retrieve latest state."""
-        self._refresh()
-
-    def _refresh(self):
-        """Update the state of the switch."""
-        state = self.coordinator.device(
-            self.flipr_id).data["state"]
-
-        if state == True:
-            self._state = STATE_ON
-        elif state == False:
-            self._state = STATE_OFF
-        else:
-            self._state = None
+            await self.coordinator.async_request_refresh()

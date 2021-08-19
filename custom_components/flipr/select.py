@@ -19,10 +19,7 @@ from . import (
 )
 
 from .const import (
-    ATTRIBUTION,
     DOMAIN,
-    MANUFACTURER,
-    NAME,
     HUB_MODES,
     FliprType
 )
@@ -40,12 +37,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     select_list = []
 
-    flipr_hubs = [device.id for device in coordinator.data
-                  if device.type == FliprType.hub]
+    flipr_hubs = coordinator.list_ids(FliprType.hub)
 
     for flipr_hub in flipr_hubs:
         for select in SELECTS:
-            select_list.append(FliprModeSelect(coordinator, flipr_hub, select))
+            select_list.append(FliprModeSelect(
+                coordinator, flipr_hub, select))
 
     async_add_entities(select_list, True)
 
@@ -56,17 +53,6 @@ class FliprModeSelect(FliprEntity, SelectEntity):
     def unique_id(self) -> str:
         """Define device unique_id."""
         return f"{self.flipr_id}-flipr-hub-mode-select"
-
-    @property
-    def device_info(self) -> dict:
-        """Define device information global to entities."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self.flipr_id)
-            },
-            ATTR_NAME: NAME,
-            ATTR_MANUFACTURER: MANUFACTURER,
-        }
 
     @property
     def name(self) -> str:
@@ -81,7 +67,7 @@ class FliprModeSelect(FliprEntity, SelectEntity):
     @property
     def current_option(self) -> str:
         """Return the curent mode."""
-        return str(self.coordinator.device(self.flipr_id).data["mode"])
+        return str(self.device().data["mode"])
 
     @property
     def options(self) -> list:
@@ -96,8 +82,7 @@ class FliprModeSelect(FliprEntity, SelectEntity):
                 _LOGGER.error("Error changing hub id %s to %s",
                               self.flipr_id, option)
             else:
-                self._attr_current_option = result
-                self.async_schedule_update_ha_state()
+                await self.coordinator.async_request_refresh()
         else:
             raise ValueError(
                 f"Can't set the hub mode to {option}. Allowed modes are: {self.options}"

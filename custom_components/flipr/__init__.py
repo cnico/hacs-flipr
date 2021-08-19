@@ -23,6 +23,10 @@ from .const import (
     CONF_PASSWORD,
     CONF_USERNAME,
     DOMAIN,
+    MANUFACTURER,
+    NAME,
+    SCAN_INTERVAL_FLIPR,
+    SCAN_INTERVAL_HUB,
     API_TIMEOUT,
     FliprResult,
     FliprType
@@ -31,8 +35,7 @@ from .crypt_util import decrypt_data
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL_FLIPR = 3600
-SCAN_INTERVAL_HUB = 300
+
 SCAN_INTERVAL_GLOBAL = timedelta(minutes=1)
 
 PLATFORMS = ["sensor", "binary_sensor", "switch", "select"]
@@ -117,15 +120,15 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
                     *(self._fetch_hub_data(device)
                       for device in devices['hub'])
                 )
-                return results
+                return {device.id: device for device in results}
             except Exception as err:
                 raise UpdateFailed(err) from err
 
     async def _fetch_flipr_data(self, id) -> FliprResult:
         """Fetch latest Flipr data."""
-        if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_FLIPR > time()):
+        if (self.device(id) is not None) and (self.data[id].last_read + SCAN_INTERVAL_FLIPR > time()):
             # Data fresh enough, skip reading
-            return self.device(id)
+            return self.data[id]
         else:
             # Refresh Data
             flipr_data = await self.hass.async_add_executor_job(self.client.get_pool_measure_latest, id)
@@ -133,9 +136,9 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _fetch_hub_data(self, id: str) -> FliprResult:
         """Fetch latest Flipr hub data."""
-        if (self.device(id) is not None) and (self.device(id).last_read + SCAN_INTERVAL_HUB > time()):
+        if (self.device(id) is not None) and (self.data[id].last_read + SCAN_INTERVAL_HUB > time()):
             # Data fresh enough, skip reading
-            return self.device(id)
+            return self.data[id]
         else:
             # Refresh Data
             _LOGGER.debug("Fetching hub data for %s", id)
@@ -148,9 +151,9 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
         result = await self.hass.async_add_executor_job(self.client.set_hub_state, id, state)
         if result is not None:
             # refresh data state
-            self.device(id).data["state"] = result["state"]
-            self.device(id).data["mode"] = result["mode"]
-            self.device(id).data["last_read"] = time()
+            self.data[id].data["state"] = result["state"]
+            self.data[id].data["mode"] = result["mode"]
+            self.data[id].data["last_read"] = time()
         return result["state"]
 
     async def async_set_hub_mode(self, id: str, mode: str) -> str:
@@ -159,18 +162,26 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
         result = await self.hass.async_add_executor_job(self.client.set_hub_mode, id, mode)
         if result is not None:
             # refresh data state
-            self.device(id).data["state"] = result["state"]
-            self.device(id).data["mode"] = result["mode"]
-            self.device(id).data["last_read"] = time()
+            self.data[id].data["state"] = result["state"]
+            self.data[id].data["mode"] = result["mode"]
+            self.data[id].data["last_read"] = time()
         return result["mode"]
+
+    def list_ids(self, flipr_type: FliprType = None) -> list(str):
+        if self.data is None:
+            return list()
+        elif flipr_type is None:
+            return self.data.keys()
+        else:
+            return [id for id, device in self.data.items()
+                    if device.type == flipr_type]
 
     def device(self, id: str) -> FliprResult:
         if self.data is None:
             return None
 
-        for device in self.data:
-            if device.id == id:
-                return device
+        if id in self.data:
+            return self.data[id]
         else:
             return None
 
@@ -178,7 +189,7 @@ class FliprDataUpdateCoordinator(DataUpdateCoordinator):
 class FliprEntity(CoordinatorEntity):
     """Implements a common class elements representing the Flipr component."""
 
-    def __init__(self, coordinator, flipr_id, info_type):
+    def __init__(self, coordinator, flipr_id: str, info_type: str):
         """Initialize Flipr sensor."""
         super().__init__(coordinator)
         self._unique_id = f"{flipr_id}-{info_type}"
@@ -189,3 +200,18 @@ class FliprEntity(CoordinatorEntity):
     def unique_id(self):
         """Return a unique id."""
         return self._unique_id
+
+    @property
+    def device_info(self):
+        """Define device information global to entities."""
+        return {
+            "identifiers": {
+                (DOMAIN, self.flipr_id)
+            },
+            "name": f"{NAME} - {self.flipr_id}",
+            "manufacturer": MANUFACTURER,
+            "model": self.device().type.value
+        }
+
+    def device(self):
+        return self.coordinator.data[self.flipr_id]

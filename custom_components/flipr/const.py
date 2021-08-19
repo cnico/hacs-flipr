@@ -14,6 +14,9 @@ NAME = "Flipr"
 
 API_TIMEOUT = 100
 
+SCAN_INTERVAL_FLIPR = 3600
+SCAN_INTERVAL_HUB = 300
+
 MODE_HUB_AUTO = "auto"
 MODE_HUB_MANUAL = "manual"
 MODE_HUB_PLANNING = "planning"
@@ -22,8 +25,8 @@ HUB_MODES = [MODE_HUB_AUTO, MODE_HUB_MANUAL, MODE_HUB_PLANNING]
 
 class FliprType(enum.Enum):
     """The Flipr speech types."""
-    hub = "hub"
-    flipr = "flipr"
+    hub = "Flipr Hub"
+    flipr = "Flipr"
 
 
 @dataclass
