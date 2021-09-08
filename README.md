@@ -1,16 +1,6 @@
 # Flipr HACS
 
-This custom component for Home Assistant has been created the time the official PR
-for flipr integration is integrated in the main home assistant core project.
+This project is now obsolete since all the functionnalities it covers have been merged in the core distribution of HomeAssistant (cf : https://www.home-assistant.io/integrations/flipr/).
+This project will be removed in a few months : in 2022 probably.
 
-## Installation
-
-### HACS installation
-
-1. Install [HACS](https://hacs.xyz/). That way you get updates automatically.
-2. Add this Github repository as custom repository in HACS settings.
-3. search and install "Flipr" in HACS and click `install`.
-4. Restart Home Assistant.
-5. Refresh browser cache for the frontend.
-6. Install the integration via the UI (Configuration > Integrations > Flipr)
-
+To migrate to the official flipr integration, you should remove this custom hacs_flipr integration, restart homeassistant and then install the official flipr integration. If you have dashboards using flipr sensors, they should still work as most the sensor names did not changed. The only one that changed is date_measure renamed to last_measured.
